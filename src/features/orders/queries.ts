@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ADMIN_TABLE_PAGE_SIZE } from "@/config/constants";
 import type { OrderStatus, PaymentStatus } from "@/config/constants";
+import { sanitizeFilterValue } from "@/lib/utils/postgrest";
 import type { Order, OrderWithItems, OrderWithItemsAndProfile, OrderWithProfile } from "@/types";
 
 export async function getOrdersForCurrentUser(): Promise<Order[]> {
@@ -55,8 +56,9 @@ export async function getAllOrdersAdmin({
   if (status) query = query.eq("status", status);
   if (paymentStatus) query = query.eq("payment_status", paymentStatus);
   if (search) {
+    const term = sanitizeFilterValue(search);
     query = query.or(
-      `order_number.ilike.%${search}%,contact_name.ilike.%${search}%,contact_email.ilike.%${search}%`,
+      `order_number.ilike.%${term}%,contact_name.ilike.%${term}%,contact_email.ilike.%${term}%`,
     );
   }
 

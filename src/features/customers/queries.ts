@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ADMIN_TABLE_PAGE_SIZE } from "@/config/constants";
+import { sanitizeFilterValue } from "@/lib/utils/postgrest";
 import type { Order } from "@/types";
 import type { Database } from "@/types/database.types";
 
@@ -20,7 +21,8 @@ export async function getCustomersAdmin({
     .order("created_at", { ascending: false });
 
   if (search) {
-    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+    const term = sanitizeFilterValue(search);
+    query = query.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
   }
 
   const from = (page - 1) * ADMIN_TABLE_PAGE_SIZE;
