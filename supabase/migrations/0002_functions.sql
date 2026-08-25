@@ -41,13 +41,16 @@ create trigger on_auth_user_created
   for each row execute function handle_new_user();
 
 -- ----------------------------------------------------------------------------
--- guard_profile_role_change: only an existing admin may change a profile's
--- role. The trigger below enforces this on every update.
+-- guard_profile_role_change: a signed-in customer can never change anyone's
+-- role, including their own. auth.uid() is null outside of a PostgREST
+-- request (the Supabase SQL editor, the dashboard, a service-role script),
+-- so that path is left open - it's how the first admin gets promoted (see
+-- README) and is not something a customer can reach through the app.
 -- ----------------------------------------------------------------------------
 
 create function guard_profile_role_change() returns trigger as $$
 begin
-  if new.role <> old.role and not is_admin() then
+  if new.role <> old.role and auth.uid() is not null and not is_admin() then
     raise exception 'Only admins can change a profile role';
   end if;
   return new;

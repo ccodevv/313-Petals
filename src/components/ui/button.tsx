@@ -2,8 +2,8 @@ import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
-type Size = "sm" | "md" | "lg";
+export type Variant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
+export type Size = "sm" | "md" | "lg";
 
 const variantClasses: Record<Variant, string> = {
   primary:
@@ -23,6 +23,23 @@ const sizeClasses: Record<Size, string> = {
   lg: "px-6 py-3 text-base",
 };
 
+export function buttonVariants({
+  variant = "primary",
+  size = "md",
+  className,
+}: {
+  variant?: Variant;
+  size?: Size;
+  className?: string;
+} = {}) {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  );
+}
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -37,12 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          variantClasses[variant],
-          sizeClasses[size],
-          className,
-        )}
+        className={buttonVariants({ variant, size, className })}
         disabled={disabled || isLoading}
         {...props}
       >

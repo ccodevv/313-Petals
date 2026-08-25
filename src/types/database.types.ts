@@ -20,7 +20,16 @@ export type PaymentMethod = "cash" | "gcash" | "bank_transfer" | "card";
 export type FulfillmentType = "delivery" | "pickup";
 export type InventoryReason = "order" | "restock" | "adjustment" | "return";
 
+type Relationship = {
+  foreignKeyName: string;
+  columns: string[];
+  isOneToOne?: boolean;
+  referencedRelation: string;
+  referencedColumns: string[];
+};
+
 type NoRelationships = { Relationships: [] };
+type Rel<T extends Relationship[]> = { Relationships: T };
 
 export interface Database {
   public: {
@@ -99,7 +108,17 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["products"]["Insert"]>;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "products_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
       carts: {
         Row: {
           id: string;
@@ -114,7 +133,17 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["carts"]["Insert"]>;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "carts_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
       cart_items: {
         Row: {
           id: string;
@@ -133,7 +162,24 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["cart_items"]["Insert"]>;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey";
+            columns: ["cart_id"];
+            isOneToOne: false;
+            referencedRelation: "carts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
       orders: {
         Row: {
           id: string;
@@ -163,7 +209,17 @@ export interface Database {
             "status" | "payment_status"
           >
         >;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "orders_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
       order_items: {
         Row: {
           id: string;
@@ -177,7 +233,24 @@ export interface Database {
         };
         Insert: never;
         Update: never;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "order_items_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
       inventory_transactions: {
         Row: {
           id: string;
@@ -192,7 +265,31 @@ export interface Database {
         // Written only through the adjust_stock() RPC or create_order().
         Insert: never;
         Update: never;
-      } & NoRelationships;
+      } & Rel<
+        [
+          {
+            foreignKeyName: "inventory_transactions_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inventory_transactions_reference_order_id_fkey";
+            columns: ["reference_order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inventory_transactions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ]
+      >;
     };
     Views: Record<string, never>;
     Functions: {
