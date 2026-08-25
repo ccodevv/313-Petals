@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCTS_PAGE_SIZE } from "@/config/constants";
+import { ADMIN_TABLE_PAGE_SIZE, PRODUCTS_PAGE_SIZE } from "@/config/constants";
 import type { ProductWithCategory } from "@/types";
 
 export type ProductSort = "newest" | "price_asc" | "price_desc" | "name_asc";
@@ -69,6 +69,52 @@ export async function getProductBySlug(slug: string): Promise<ProductWithCategor
     .from("products")
     .select(PRODUCT_SELECT)
     .eq("slug", slug)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+export interface AdminProductFilters {
+  search?: string;
+  categoryId?: string;
+  page?: number;
+}
+
+/** Unlike getProducts(), returns every product regardless of availability -
+ * for the admin product list, where deactivated/out-of-stock items should
+ * still be visible and manageable. */
+export async function getAllProductsAdmin({
+  search,
+  categoryId,
+  page = 1,
+}: AdminProductFilters): Promise<{ products: ProductWithCategory[]; totalCount: number }> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("products")
+    .select(PRODUCT_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (categoryId) query = query.eq("category_id", categoryId);
+  if (search) query = query.ilike("name", `%${search}%`);
+
+  const from = (page - 1) * ADMIN_TABLE_PAGE_SIZE;
+  const to = from + ADMIN_TABLE_PAGE_SIZE - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  return { products: data ?? [], totalCount: count ?? 0 };
+}
+
+export async function getProductByIdAdmin(id: string): Promise<ProductWithCategory | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("id", id)
     .single();
 
   if (error) return null;
