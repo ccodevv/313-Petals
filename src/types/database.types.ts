@@ -291,7 +291,20 @@ export interface Database {
         ]
       >;
     };
-    Views: Record<string, never>;
+    Views: {
+      customer_summary: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string | null;
+          created_at: string;
+          order_count: number;
+          total_spent: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       is_admin: {
         Args: Record<string, never>;

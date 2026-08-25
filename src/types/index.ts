@@ -21,6 +21,11 @@ export type OrderWithItems = Order & {
   order_items: OrderItem[];
 };
 
+export type OrderWithItemsAndProfile = Order & {
+  order_items: OrderItem[];
+  profile: Pick<Profile, "id" | "full_name" | "email" | "phone" | "delivery_address"> | null;
+};
+
 export type OrderWithProfile = Order & {
   profile: Pick<Profile, "id" | "full_name" | "email" | "phone"> | null;
 };
