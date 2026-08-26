@@ -36,7 +36,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: "Cash",
   gcash: "GCash",
   bank_transfer: "Bank Transfer",
-  card: "Card (coming soon)",
+  card: "Card (pay online via Stripe)",
 };
 
 export const FULFILLMENT_TYPES = ["delivery", "pickup"] as const;

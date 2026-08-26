@@ -114,7 +114,8 @@ export function CheckoutForm({ profile }: { profile: Profile }) {
             ))}
           </Select>
           <p className="mt-1 text-xs text-stone-500">
-            Payment is settled at pickup/delivery for now - online payment can be added later.
+            Choosing card takes you to Stripe to pay securely. Other methods are settled at
+            pickup/delivery.
           </p>
         </div>
         <div>

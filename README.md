@@ -8,7 +8,7 @@ Auth, Storage, RLS).
 
 ```bash
 npm install
-cp .env.local.example .env.local   # fill in your Supabase project URL/anon key
+cp .env.local.example .env.local   # fill in your Supabase project values (see below)
 npm run dev
 ```
 
@@ -21,6 +21,11 @@ normal account through the app, then promote it in the SQL editor:
 ```sql
 update profiles set role = 'admin' where email = 'you@example.com';
 ```
+
+The Stripe-related variables in `.env.local.example` are only needed if
+you want to test card payments at checkout — cash/GCash/bank-transfer
+checkout works without them. See [Payments (Stripe)](#payments-stripe)
+below for full setup.
 
 ## Architecture
 
@@ -119,14 +124,68 @@ pages, and non-admins away from `/admin/**`, before a page even renders.
 This is defense-in-depth on top of RLS, not a replacement for it — every
 Supabase query still runs under the signed-in user's own JWT.
 
-The Supabase **service-role key** is never used by this app; it should
-never be added to client code or committed.
+The Supabase **service-role key** is used in exactly one place -
+`src/app/api/webhooks/stripe/route.ts` - because a Stripe webhook call has
+no user session for RLS to check against; that route verifies Stripe's
+signature before touching the database, and only ever updates one order's
+`payment_status`. It is never used anywhere else, never sent to the
+client, and should never be committed.
 
 ## Order statuses
 
 `pending → confirmed → preparing → ready → out_for_delivery → completed`,
 with `cancelled` reachable from the earlier states. Payment status is
 tracked separately as `unpaid → paid → refunded`.
+
+## Payments (Stripe)
+
+The "Card" payment method at checkout goes through **Stripe Checkout** (a
+Stripe-hosted payment page) — no card data ever touches this app. The flow:
+
+1. `placeOrder()` creates the order first (same as cash/GCash/bank transfer -
+   stock is reserved via `create_order()` immediately).
+2. If the payment method is "card", it creates a Stripe Checkout Session for
+   that order's items and redirects the customer to Stripe to pay.
+3. Stripe redirects back to the order page on success. Separately, Stripe
+   sends a webhook (`checkout.session.completed`) to
+   `POST /api/webhooks/stripe`, which verifies the signature and marks the
+   order's `payment_status` as `paid`. The redirect and the webhook are
+   independent — the webhook is the actual source of truth for payment
+   status, since the redirect alone could be spoofed or interrupted.
+
+### Setup
+
+1. Create a free account at https://dashboard.stripe.com and stay in **Test
+   mode** for development.
+2. **API keys**: Developers → API keys → copy the **Secret key**
+   (`sk_test_...`) into `STRIPE_SECRET_KEY`.
+3. **Webhook secret (local dev)**: install the
+   [Stripe CLI](https://docs.stripe.com/stripe-cli), then run:
+   ```bash
+   stripe login
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
+   This prints a `whsec_...` value — put that in `STRIPE_WEBHOOK_SECRET`.
+   Leave this command running in a separate terminal alongside `npm run dev`
+   whenever you want to test card payments locally; without it, Stripe has
+   nowhere to deliver the webhook and orders will stay `unpaid` even after a
+   successful test payment.
+4. **Webhook secret (production)**: instead of the CLI, add a webhook
+   endpoint in the Stripe dashboard (Developers → Webhooks → Add endpoint)
+   pointing at `https://yourdomain.com/api/webhooks/stripe`, subscribed to
+   the `checkout.session.completed` event, and use *its* signing secret.
+5. Set `SUPABASE_SERVICE_ROLE_KEY` (Supabase dashboard → Project Settings →
+   API Keys → **Secret keys**) and `NEXT_PUBLIC_SITE_URL` (e.g.
+   `http://localhost:3000` for dev) — both are required for the Stripe flow.
+6. Test with [Stripe's test card numbers](https://docs.stripe.com/testing),
+   e.g. `4242 4242 4242 4242`, any future expiry, any CVC.
+
+Known limitation: if a customer abandons the Stripe payment page, the order
+stays `pending`/`unpaid` with stock already reserved — there's no automatic
+expiry/cancellation yet. For now, handle that manually from
+`/admin/orders` (contact the customer, arrange a different payment method,
+or cancel the order). A natural follow-up would be a scheduled job that
+cancels and restocks stale unpaid card orders after a timeout.
 
 ## Development phases
 

@@ -2,8 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStripeClient } from "@/lib/stripe/server";
+import { getSiteUrl } from "@/lib/utils/site-url";
 import { checkoutSchema } from "@/lib/validations/checkout";
 import { getCartItems } from "@/features/cart/queries";
+import type { CartItemWithProduct } from "@/types";
 
 export type CheckoutActionState = { error: string | null };
 
@@ -60,5 +63,50 @@ export async function placeOrder(
     return { error: error.message };
   }
 
+  if (parsed.data.paymentMethod === "card") {
+    let checkoutUrl: string;
+    try {
+      checkoutUrl = await createStripeCheckoutUrl(orderId, validItems);
+    } catch {
+      // The order already exists (status: pending, payment_status: unpaid) -
+      // send the customer to it instead of a hard crash. They (or an admin)
+      // can retry payment or arrange it another way from there.
+      redirect(`/orders/${orderId}?paymentError=1`);
+    }
+    redirect(checkoutUrl);
+  }
+
   redirect(`/orders/${orderId}`);
+}
+
+/**
+ * Stripe Checkout is hosted by Stripe - it collects the card details
+ * itself, so no card data ever touches this app (or needs PCI handling
+ * here). The order is already created and stock already reserved at this
+ * point, same as for the other payment methods; the Stripe webhook
+ * (src/app/api/webhooks/stripe/route.ts) marks it paid once payment
+ * actually completes.
+ */
+async function createStripeCheckoutUrl(orderId: string, items: CartItemWithProduct[]) {
+  const siteUrl = getSiteUrl();
+
+  const session = await getStripeClient().checkout.sessions.create({
+    mode: "payment",
+    line_items: items.map((item) => ({
+      quantity: item.quantity,
+      price_data: {
+        currency: "usd",
+        unit_amount: Math.round(item.product!.price * 100),
+        product_data: { name: item.product!.name },
+      },
+    })),
+    metadata: { order_id: orderId },
+    success_url: `${siteUrl}/orders/${orderId}`,
+    cancel_url: `${siteUrl}/checkout`,
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe did not return a checkout URL");
+  }
+  return session.url;
 }

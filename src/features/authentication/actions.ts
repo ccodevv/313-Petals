@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/utils/site-url";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -77,7 +78,7 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = getSiteUrl();
   await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: `${origin}/auth/confirm?next=/update-password`,
   });

@@ -9,16 +9,26 @@ export const metadata: Metadata = { title: "Order Details" };
 
 export default async function OrderDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ paymentError?: string }>;
 }) {
   const { id } = await params;
+  const { paymentError } = await searchParams;
   const order = await getOrderById(id);
 
   if (!order) notFound();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      {paymentError && order.payment_status === "unpaid" && (
+        <div className="mb-6 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Your order was placed, but we couldn&apos;t start the card payment. Please try paying
+          again or contact us to arrange payment.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-stone-900">Order {order.order_number}</h1>
