@@ -1,4 +1,4 @@
-# Petals & Stems — Flower Shop E-Commerce
+# 313 Petals — Flower Shop E-Commerce
 
 A small-business flower shop storefront and admin system built with
 Next.js (App Router), TypeScript, Tailwind CSS, and Supabase (Postgres,
